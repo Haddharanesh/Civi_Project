@@ -1,221 +1,132 @@
 import { Link } from "react-router-dom"
+import { MapPin, CheckCircle2, ArrowRight, Zap, ShieldCheck } from "lucide-react"
+
+const HERO_IMG =
+  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2000&auto=format&fit=crop"
+
+const STEPS = [
+  {
+    icon: MapPin,
+    step: "01",
+    title: "Describe the issue",
+    body: "Add a short note, category, and pin the exact spot on the map.",
+  },
+  {
+    icon: Zap,
+    step: "02",
+    title: "We route it smartly",
+    body: "Duplicates gather community support. New issues go to the right department.",
+  },
+  {
+    icon: CheckCircle2,
+    step: "03",
+    title: "Track the outcome",
+    body: "Follow status updates and department remarks until it's resolved.",
+  },
+]
 
 const Home = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-100 text-gray-800 overflow-hidden">
+    <div className="text-ink overflow-hidden bg-surface">
+      {/* Full-bleed photo hero */}
+      <section className="relative min-h-[100svh] flex items-center">
+        <div className="absolute inset-0 overflow-hidden">
+          <img
+            src={HERO_IMG}
+            alt="Tree canopy over a city park path"
+            className="h-full w-full object-cover hero-kenburns"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-forest-deep via-forest/65 to-forest/25" />
+        </div>
 
-      {/* HERO */}
-      <section className="relative">
+        <div className="relative z-10 w-full max-w-4xl mx-auto px-6 pb-16 pt-32 md:pt-28 text-center">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm text-white text-xs font-semibold tracking-wide uppercase animate-fade-up">
+            <ShieldCheck className="w-3.5 h-3.5" strokeWidth={2.5} />
+            Built for citizens &amp; local government
+          </span>
 
-        {/* Glow Effects */}
-        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-emerald-300/30 blur-3xl rounded-full"></div>
-        <div className="absolute top-20 right-0 w-[400px] h-[400px] bg-emerald-200/40 blur-3xl rounded-full"></div>
-
-        <div className="container mx-auto max-w-6xl px-6 py-32 text-center relative z-10">
-          {/* App Icon */}
-          <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-10 h-10 text-emerald-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.8}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 21h18M4 21V7l8-4 8 4v14M9 21V9h6v12"
-              />
-            </svg>
-          </div>
-
-
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight max-w-4xl mx-auto">
-            Empower Your City with
-            <span className="text-emerald-600"> CivicConnect</span>
+          <h1 className="mt-6 font-display text-4xl sm:text-5xl md:text-6xl font-semibold text-white tracking-tight leading-[1.08] animate-fade-up-delay">
+            Report what breaks.
+            <br />
+            Rally your street. Get it fixed.
           </h1>
 
-          <p className="mt-6 text-gray-600 text-lg md:text-xl max-w-2xl mx-auto">
-            Report civic issues, track resolutions, and collaborate with your community
-            to build a smarter, cleaner, and safer city.
+          <p className="mt-6 max-w-xl mx-auto text-base md:text-lg text-white/80 leading-relaxed animate-fade-up-delay">
+            A calmer way for citizens to flag civic issues, back the ones that matter, and follow progress in real time.
           </p>
 
-          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="mt-9 flex flex-col sm:flex-row justify-center gap-3 animate-fade-up-delay-2">
             <Link
               to="/login"
-              className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-8 py-4 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 font-semibold flex items-center justify-center gap-2"
+              className="btn-lift inline-flex justify-center items-center gap-2 px-7 py-3.5 rounded-lg bg-white text-forest font-semibold text-[15px]"
             >
-              <span>📝</span>
-              Report an Issue
+              Report an issue
+              <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
             </Link>
-
             <Link
-              to="/analytics"
-              className="bg-white hover:bg-gray-50 text-gray-700 px-8 py-4 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 font-semibold flex items-center justify-center gap-2 border border-gray-100"
+              to="/public-reports"
+              className="btn-lift inline-flex justify-center items-center px-7 py-3.5 rounded-lg border border-white/35 text-white font-semibold text-[15px] hover:bg-white/10"
             >
-              <span>📊</span>
-              View Analytics
+              Browse public reports
             </Link>
           </div>
-
-          {/* Stats Preview */}
-          <div className="mt-16 grid grid-cols-3 gap-6 max-w-2xl mx-auto">
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-gray-100">
-              <div className="text-4xl font-bold text-emerald-600">1,200+</div>
-              <div className="text-gray-500 text-sm mt-1">Issues Reported</div>
-            </div>
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-gray-100">
-              <div className="text-4xl font-bold text-emerald-600">850+</div>
-              <div className="text-gray-500 text-sm mt-1">Resolved</div>
-            </div>
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-gray-100">
-              <div className="text-4xl font-bold text-emerald-600">5,000+</div>
-              <div className="text-gray-500 text-sm mt-1">Community Members</div>
-            </div>
-          </div>
         </div>
       </section>
 
+      {/* How it works */}
+      <section className="bg-stone py-20 md:py-28 px-6">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-moss mb-3">How it works</p>
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-forest max-w-lg tracking-tight">
+            Three quiet steps from street to solution
+          </h2>
 
-      {/* FEATURE CARDS */}
-      <section className="pb-28 px-6 relative z-10">
-        <div className="max-w-6xl mx-auto grid gap-8 md:grid-cols-3">
-
-          {/* CARD 1 */}
-          <div className="group relative bg-white rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-gray-100">
-            <div className="h-44 overflow-hidden">
-              <img
-                src="https://www.niradynamics.com/hubfs/Road-Health---pothole.png?auto=compress&cs=tinysrgb&w=800"
-                alt="Report issue"
-                className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-            </div>
-            <div className="p-6">
-              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-2xl mb-4">
-                📝
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Report Issues</h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Easily report problems with photos, location data, and detailed descriptions.
-              </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2 text-gray-600">
-                  <span className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 text-xs">✓</span>
-                  Photo uploads
-                </li>
-                <li className="flex items-center gap-2 text-gray-600">
-                  <span className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 text-xs">✓</span>
-                  Location tagging
-                </li>
-                <li className="flex items-center gap-2 text-gray-600">
-                  <span className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 text-xs">✓</span>
-                  Detailed descriptions
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* CARD 2 */}
-          <div className="group relative bg-white rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-gray-100">
-            <div className="h-44 overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d"
-                alt="Track progress"
-                className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-            </div>
-            <div className="p-6">
-              <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center text-2xl mb-4">
-                📊
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Track Progress</h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Follow the status of your reports from submission to resolution.
-              </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2 text-gray-600">
-                  <span className="w-5 h-5 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-xs">✓</span>
-                  Real-time updates
-                </li>
-                <li className="flex items-center gap-2 text-gray-600">
-                  <span className="w-5 h-5 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-xs">✓</span>
-                  Status notifications
-                </li>
-                <li className="flex items-center gap-2 text-gray-600">
-                  <span className="w-5 h-5 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-xs">✓</span>
-                  Resolution tracking
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* CARD 3 */}
-          <div className="group relative bg-white rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-gray-100">
-            <div className="h-44 overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f"
-                alt="Community voting"
-                className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-            </div>
-            <div className="p-6">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl mb-4">
-                👍
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Community Voting</h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Upvote issues in your area to help prioritize what matters most.
-              </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2 text-gray-600">
-                  <span className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs">✓</span>
-                  Issue upvoting
-                </li>
-                <li className="flex items-center gap-2 text-gray-600">
-                  <span className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs">✓</span>
-                  Community prioritization
-                </li>
-                <li className="flex items-center gap-2 text-gray-600">
-                  <span className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs">✓</span>
-                  Impact visibility
-                </li>
-              </ul>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* CTA SECTION */}
-      <section className="pb-20 px-6 relative z-10">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-3xl p-10 text-white text-center shadow-2xl">
-            <h2 className="text-3xl font-bold mb-4">Ready to Make a Difference?</h2>
-            <p className="text-emerald-100 text-lg mb-8 max-w-xl mx-auto">
-              Join thousands of citizens who are actively improving their communities through civic engagement.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/signup"
-                className="bg-white text-emerald-600 px-8 py-3 rounded-xl font-semibold hover:bg-emerald-50 transition-colors shadow-lg"
+          <ol className="mt-14 grid gap-6 md:grid-cols-3">
+            {STEPS.map((item) => (
+              <li
+                key={item.step}
+                className="bg-surface rounded-2xl border border-stone-dark p-6 shadow-soft hover:shadow-lift hover:-translate-y-1 transition-all duration-300"
               >
-                Create Free Account
-              </Link>
-              <Link
-                to="/analytics"
-                className="bg-emerald-700/30 text-white px-8 py-3 rounded-xl font-semibold hover:bg-emerald-700/40 transition-colors border border-emerald-400/30"
-              >
-                View Analytics
-              </Link>
-            </div>
-          </div>
+                <div className="w-11 h-11 rounded-xl bg-moss-pale flex items-center justify-center mb-5">
+                  <item.icon className="w-5 h-5 text-moss" strokeWidth={2} />
+                </div>
+                <span className="font-display text-moss text-xs font-bold tracking-widest">{item.step}</span>
+                <h3 className="mt-2 font-display text-xl font-semibold text-forest">{item.title}</h3>
+                <p className="mt-2 text-stone-muted text-[15px] leading-relaxed">{item.body}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
+      {/* Secondary CTA */}
+      <section className="relative px-6 py-24 overflow-hidden">
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1800&auto=format&fit=crop"
+            alt="City skyline at dusk"
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-forest/85" />
+        </div>
+        <div className="relative z-10 max-w-3xl mx-auto text-center">
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-white tracking-tight">
+            Your street is waiting for a voice
+          </h2>
+          <p className="mt-4 text-white/70 text-lg max-w-lg mx-auto">
+            Create a free account and start improving the place you call home.
+          </p>
+          <Link
+            to="/signup"
+            className="btn-lift mt-8 inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-white text-forest font-semibold"
+          >
+            Create free account
+            <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+          </Link>
+        </div>
+      </section>
     </div>
   )
 }
 
 export default Home
-

@@ -2,6 +2,7 @@ import { useState, useContext } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import API from "../services/api"
 import { AuthContext } from "../contexts/AuthContext"
+import { inputClass, PrimaryButton } from "../components/UI/CivicUI"
 
 function SuperAdminLogin() {
   const [email, setEmail] = useState("")
@@ -41,129 +42,87 @@ function SuperAdminLogin() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-
-      {/* LEFT — Branding */}
-      <div className="hidden lg:flex w-1/2 relative items-center justify-center overflow-hidden">
+    <div className="min-h-[calc(100svh-4.25rem)] flex">
+      <div className="hidden lg:flex w-[48%] relative overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1600&auto=format&fit=crop"
-          alt="Admin"
-          className="absolute inset-0 w-full h-full object-cover"
+          src="https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=1600&auto=format&fit=crop"
+          alt="Forest canopy light"
+          className="absolute inset-0 w-full h-full object-cover hero-kenburns"
         />
-
-        <div className="absolute inset-0 bg-gray-900/70 backdrop-blur-sm"></div>
-
-        <div className="relative z-10 text-white px-12">
-          <div className="w-20 h-20 bg-amber-500/20 backdrop-blur-lg rounded-2xl flex items-center justify-center text-4xl mb-6 border border-amber-500/30">
-            👑
-          </div>
-          <h1 className="text-4xl font-bold mb-4 leading-tight">
-            Super Admin <br /> <span className="text-amber-400">Control Panel</span>
-          </h1>
-          <p className="text-lg text-gray-300 max-w-md">
-            Restricted system control panel. Manage users, departments, and monitor all civic complaints.
+        <div className="absolute inset-0 bg-gradient-to-t from-forest-deep via-forest/70 to-forest/40" />
+        <div className="relative z-10 flex flex-col justify-end p-12 text-white">
+          <p className="font-display text-4xl font-semibold tracking-tight">CivicConnect</p>
+          <p className="mt-4 text-lg text-white/80 max-w-sm leading-relaxed">
+            Super Admin command center — users, departments, city workload, and complaint moderation.
           </p>
-          
-          {/* Feature highlights */}
-          <div className="mt-8 space-y-3">
-            <div className="flex items-center gap-3">
-              <span className="w-8 h-8 bg-amber-500/30 rounded-lg flex items-center justify-center">✓</span>
-              <span className="text-gray-300">Manage all users and roles</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="w-8 h-8 bg-amber-500/30 rounded-lg flex items-center justify-center">✓</span>
-              <span className="text-gray-300">Create and delete departments</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="w-8 h-8 bg-amber-500/30 rounded-lg flex items-center justify-center">✓</span>
-              <span className="text-gray-300">View and manage all complaints</span>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* RIGHT — Login Form */}
-      <div className="flex flex-1 items-center justify-center px-6 py-12">
-        <div className="bg-gray-800/90 backdrop-blur-xl border border-gray-700/50 p-8 rounded-3xl shadow-2xl w-full max-w-md">
-          
-          {/* Mobile Header */}
-          <div className="lg:hidden text-center mb-6">
-            <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg border border-amber-500/30">
-              👑
-            </div>
-            <h1 className="text-2xl font-bold text-white">Super Admin</h1>
+      <div className="flex flex-1 items-center justify-center px-6 py-12 bg-stone">
+        <div className="w-full max-w-md animate-fade-up">
+          <div className="lg:hidden mb-8">
+            <p className="font-display text-3xl font-semibold text-forest">CivicConnect</p>
           </div>
 
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3 shadow-lg border border-amber-500/30">
-              👑
-            </div>
-            <h2 className="text-3xl font-bold text-white">Super Admin Access</h2>
-            <p className="text-gray-400 mt-1">Restricted System Control Panel</p>
-          </div>
+          <p className="text-xs font-semibold tracking-[0.18em] uppercase text-moss mb-2">
+            Super Admin
+          </p>
+          <h1 className="font-display text-3xl font-semibold text-forest">Command portal</h1>
+          <p className="mt-2 text-stone-muted">
+            Sign in to operate the civic complaint platform
+          </p>
 
           {error && (
-            <div className="bg-red-900/50 border border-red-500/50 text-red-400 text-sm p-3 rounded-xl mb-4 text-center flex items-center justify-center gap-2">
-              <span>⚠️</span>
+            <div className="mt-6 bg-rose-50 border border-rose-200 text-rose-700 text-sm p-3 rounded-lg text-center">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">📧</span>
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold tracking-wide uppercase text-stone-muted mb-1.5">
+                Email
+              </label>
               <input
                 type="email"
-                placeholder="Admin Email Address"
-                className="w-full pl-10 pr-4 py-3 border border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-gray-700/50 text-white placeholder-gray-400 transition-all"
+                placeholder="admin@example.com"
+                className={inputClass}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
-
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔒</span>
+            <div>
+              <label className="block text-xs font-semibold tracking-wide uppercase text-stone-muted mb-1.5">
+                Password
+              </label>
               <input
                 type="password"
-                placeholder="Password"
-                className="w-full pl-10 pr-4 py-3 border border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-gray-700/50 text-white placeholder-gray-400 transition-all"
+                placeholder="Your password"
+                className={inputClass}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
 
-            <button
+            <PrimaryButton
               type="submit"
               disabled={loading}
-              className={`w-full py-3 rounded-xl text-lg font-bold transition-all duration-200 shadow-lg ${
-                loading
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-amber-500 to-amber-600 text-gray-900 hover:from-amber-400 hover:to-amber-500 hover:shadow-xl"
+              className={`w-full py-3.5 text-[15px] ${
+                loading ? "!bg-stone-dark !text-stone-muted cursor-not-allowed" : ""
               }`}
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Authenticating...
-                </span>
-              ) : (
-                "Access Control Panel"
-              )}
-            </button>
+              {loading ? "Signing in…" : "Sign in"}
+            </PrimaryButton>
           </form>
 
-          <p className="text-center text-sm text-gray-400 mt-6">
+          <p className="text-center text-sm text-stone-muted mt-6">
             Not an admin?{" "}
-            <Link to="/login" className="text-amber-400 font-semibold hover:text-amber-300 transition-colors">
-              Regular Login
+            <Link to="/login" className="text-moss font-semibold hover:text-forest">
+              Citizen login
             </Link>
           </p>
-
         </div>
       </div>
     </div>
@@ -171,4 +130,3 @@ function SuperAdminLogin() {
 }
 
 export default SuperAdminLogin
-

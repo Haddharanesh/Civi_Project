@@ -1,45 +1,103 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
+:root {
+  --forest: #0f3d2e;
+  --forest-deep: #0a2a1f;
+  --moss: #1f7a54;
+  --moss-light: #2d9b6a;
+  --stone: #f3f0ea;
+  --stone-dark: #e7e2d8;
+  --ink: #14201b;
+  --ink-muted: #5c6b63;
+  --surface: #fffcf7;
+  --radius: 0.75rem;
 }
-
-.animate-fade-in {
-  animation: fade-in 0.4s ease-out;
-}
-
-
-
 
 body {
-  font-family: "Inter", sans-serif;
+  font-family: "Manrope", system-ui, sans-serif;
+  color: var(--ink);
+  background-color: var(--stone);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Design System Variables */
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --primary: 142.1 76.2% 36.3%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --border: 214.3 31.8% 91.4%;
-  --radius: 0.5rem;
+.font-display {
+  font-family: "Fraunces", Georgia, serif;
 }
 
-/* Utility helpers */
-.bg-background { background-color: hsl(var(--background)); }
-.text-foreground { color: hsl(var(--foreground)); }
-.bg-card { background-color: hsl(var(--card)); }
-.text-card-foreground { color: hsl(var(--card-foreground)); }
-.text-muted-foreground { color: hsl(var(--muted-foreground)); }
-.border { border-color: hsl(var(--border)); }
-.rounded-lg { border-radius: var(--radius); }
+/* Motion */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
+@keyframes ken-burns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
 
+.animate-fade-up {
+  animation: fade-up 0.7s ease-out both;
+}
+
+.animate-fade-up-delay {
+  animation: fade-up 0.7s ease-out 0.15s both;
+}
+
+.animate-fade-up-delay-2 {
+  animation: fade-up 0.7s ease-out 0.3s both;
+}
+
+.hero-kenburns {
+  animation: ken-burns 18s ease-out forwards;
+}
+
+.btn-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.btn-lift:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -12px rgba(15, 61, 46, 0.45);
+}
+
+/* Civic Forest utilities */
+.bg-forest {
+  background-color: var(--forest);
+}
+.bg-moss {
+  background-color: var(--moss);
+}
+.bg-stone {
+  background-color: var(--stone);
+}
+.text-forest {
+  color: var(--forest);
+}
+.text-moss {
+  color: var(--moss);
+}
+.text-ink {
+  color: var(--ink);
+}
+.text-ink-muted {
+  color: var(--ink-muted);
+}
+.border-stone {
+  border-color: var(--stone-dark);
+}
+
+.status-pill {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold tracking-wide uppercase;
+}

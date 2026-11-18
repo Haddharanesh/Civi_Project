@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import API from "../../services/api"
+import { useRealtime, useRealtimeRefresh } from "../../contexts/RealtimeContext"
 
-// Format relative time
 const formatTime = (dateString) => {
   if (!dateString) return ""
   const date = new Date(dateString)
@@ -19,33 +19,19 @@ const formatTime = (dateString) => {
   return date.toLocaleDateString()
 }
 
-// Get icon based on notification type
-const getTypeIcon = (type) => {
-  switch (type) {
-    case "STATUS_UPDATE":
-      return "📋"
-    case "REMARK":
-      return "💬"
-    case "NEW_COMPLAINT":
-      return "📢"
-    default:
-      return "🔔"
-  }
-}
-
-function NotificationDropdown({ 
-  user, 
-  theme = "blue", // "blue" for department, "emerald" for user
+function NotificationDropdown({
+  user,
   viewAllLink = "/notifications",
-  notificationsApi = "/notifications/my"
+  notificationsApi = "/notifications/my",
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(false)
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
+  const { unread, refreshUnread } = useRealtime()
+  const isDepartment = notificationsApi.includes("department")
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -59,11 +45,12 @@ function NotificationDropdown({
   const fetchNotifications = async () => {
     try {
       setLoading(true)
-      console.log("Fetching notifications from:", notificationsApi)
       const res = await API.get(notificationsApi)
-      console.log("Notifications response:", res.data)
-      // Backend returns isRead as 'read' in JSON
-      setNotifications(res.data.reverse())
+      const list = (res.data || []).map((n) => ({
+        ...n,
+        read: n.read ?? n.is_read ?? false,
+      }))
+      setNotifications(list)
     } catch (err) {
       console.error("Failed to fetch notifications:", err)
     } finally {
@@ -71,23 +58,23 @@ function NotificationDropdown({
     }
   }
 
-  // Fetch notifications every time dropdown opens
   useEffect(() => {
-    console.log("isOpen:", isOpen, "user?.id:", user?.id)
     if (isOpen && user?.id) {
       fetchNotifications()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, user?.id])
+
+  useRealtimeRefresh(() => {
+    if (isOpen) fetchNotifications()
+  }, ["notification", "complaint"])
 
   const markAsRead = async (notification) => {
     if (notification.read) return
-    
     try {
       await API.put(`/notifications/${notification.id}/read`)
-      setNotifications(notifications.map(n => 
-        n.id === notification.id ? { ...n, read: true } : n
-      ))
+      setNotifications(notifications.map((n) => (n.id === notification.id ? { ...n, read: true } : n)))
+      refreshUnread()
     } catch (err) {
       console.error("Failed to mark as read:", err)
     }
@@ -97,122 +84,77 @@ function NotificationDropdown({
     markAsRead(notification)
     setIsOpen(false)
     if (notification.complaintId) {
-      navigate(`/complaint/${notification.complaintId}`)
+      navigate(isDepartment ? "/department/review" : `/complaint/${notification.complaintId}`)
     }
   }
 
-  // Filter to show only unread notifications
-  const unreadNotifications = notifications.filter(n => !n.read)
-  const unreadCount = unreadNotifications.length
-
-  // Theme colors
-  const themeColors = {
-    blue: {
-      header: "from-blue-500 to-blue-600",
-      badge: "bg-blue-100 text-blue-600 hover:bg-blue-50",
-      indicator: "bg-blue-500",
-      iconBg: notification => notification.read ? "bg-gray-100" : "bg-blue-500",
-      iconColor: notification => notification.read ? "text-gray-400" : "text-white"
-    },
-    emerald: {
-      header: "from-emerald-500 to-emerald-600",
-      badge: "bg-emerald-100 text-emerald-600 hover:bg-emerald-50",
-      indicator: "bg-emerald-500",
-      iconBg: notification => notification.read ? "bg-gray-100" : "bg-emerald-500",
-      iconColor: notification => notification.read ? "text-gray-400" : "text-white"
-    }
-  }
-
-  const colors = themeColors[theme] || themeColors.blue
+  const unreadNotifications = notifications.filter((n) => !n.read)
+  const unreadCount = isDepartment
+    ? unread.departmentUnread || unreadNotifications.length
+    : unread.userUnread || unreadNotifications.length
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Icon Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative p-2 transition-colors rounded-xl ${
-          isOpen ? colors.badge : "text-gray-600 hover:bg-gray-50"
+        className={`relative p-2.5 rounded-lg transition-colors ${
+          isOpen ? "bg-moss-pale text-forest" : "text-forest hover:bg-stone"
         }`}
+        aria-label="Notifications"
       >
-        <span className="text-xl">🔔</span>
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+          />
+        </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center animate-pulse">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[1.15rem] h-5 px-1 bg-rose-600 rounded-full text-white text-[10px] font-bold flex items-center justify-center">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* Header */}
-          <div className={`px-4 py-3 bg-gradient-to-r ${colors.header} text-white`}>
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Notifications</h3>
-              {unreadCount > 0 && (
-                <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                  {unreadCount} new
-                </span>
-              )}
-            </div>
+        <div className="absolute right-0 mt-2 w-80 bg-surface rounded-xl shadow-lift border border-stone-dark overflow-hidden z-50 animate-fade-up">
+          <div className="px-4 py-3 bg-forest text-white flex items-center justify-between">
+            <h3 className="font-display font-semibold">Notifications</h3>
+            {unreadCount > 0 && (
+              <span className="text-xs bg-white/15 px-2 py-1 rounded-md">{unreadCount} new</span>
+            )}
           </div>
 
-          {/* Notifications List - Show only unread */}
           <div className="max-h-80 overflow-y-auto">
             {loading ? (
-              <div className="p-8 text-center">
-                <div className={`animate-spin rounded-full h-8 w-8 border-b-2 ${theme === "emerald" ? "border-emerald-500" : "border-blue-500"} mx-auto`}></div>
-                <p className="text-gray-500 text-sm mt-2">Loading...</p>
-              </div>
+              <div className="p-8 text-center text-stone-muted text-sm">Loading…</div>
             ) : unreadNotifications.length === 0 ? (
-              <div className="p-8 text-center">
-                <div className="text-4xl mb-2">🔔</div>
-                <p className="text-gray-500 text-sm">No unread notifications</p>
-                <p className="text-gray-400 text-xs">You're all caught up!</p>
-              </div>
+              <div className="p-8 text-center text-stone-muted text-sm">No unread notifications</div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-stone-dark">
                 {unreadNotifications.slice(0, 7).map((notification) => (
-                  <div
+                  <button
                     key={notification.id}
+                    type="button"
                     onClick={() => handleNotificationClick(notification)}
-                    className={`px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer bg-blue-50/30`}
+                    className="w-full text-left px-4 py-3 hover:bg-moss-pale/40 transition-colors bg-moss-pale/20"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-500">
-                        <span className="text-sm text-white">
-                          {getTypeIcon(notification.type)}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-800 font-medium">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {formatTime(notification.createdAt)}
-                        </p>
-                      </div>
-                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
-                    </div>
-                  </div>
+                    <p className="text-sm text-ink font-medium">{notification.message}</p>
+                    <p className="text-xs text-stone-muted mt-1">{formatTime(notification.createdAt)}</p>
+                  </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Footer */}
           {viewAllLink && (
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+            <div className="px-4 py-3 bg-stone border-t border-stone-dark">
               <Link
                 to={viewAllLink}
                 onClick={() => setIsOpen(false)}
-                className={`block text-center text-sm font-medium hover:underline transition-colors ${
-                  theme === "emerald" 
-                    ? "text-emerald-600 hover:text-emerald-700" 
-                    : "text-blue-600 hover:text-blue-700"
-                }`}
+                className="block text-center text-sm text-moss font-semibold hover:text-forest"
               >
-                View All Notifications →
+                View all notifications
               </Link>
             </div>
           )}

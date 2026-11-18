@@ -2,191 +2,121 @@ import { useEffect, useState, useContext, useMemo } from "react"
 import { Link } from "react-router-dom"
 import API from "../services/api"
 import { AuthContext } from "../contexts/AuthContext"
-
-// Utility functions for styling (matching other pages)
-const getStatusColor = (status) => {
-  switch (status) {
-    case "RESOLVED": return "bg-green-500";
-    case "IN_PROGRESS": return "bg-yellow-500";
-    default: return "bg-red-500";
-  }
-};
-
-const getStatusBadge = (status) => {
-  switch (status) {
-    case "RESOLVED": return "bg-green-100 text-green-700 border-green-200";
-    case "IN_PROGRESS": return "bg-yellow-100 text-yellow-700 border-yellow-200";
-    default: return "bg-red-100 text-red-700 border-red-200";
-  }
-};
-
-const getPriorityBadge = (priority) => {
-  switch (priority) {
-    case "HIGH": return "bg-red-100 text-red-700 border-red-200";
-    case "MEDIUM": return "bg-orange-100 text-orange-700 border-orange-200";
-    default: return "bg-gray-100 text-gray-600 border-gray-200";
-  }
-};
-
-const getCategoryIcon = (category) => {
-  switch (category?.toLowerCase()) {
-    case "road": return "🛣️";
-    case "waste": return "🗑️";
-    case "electricity": return "⚡";
-    case "water": return "💧";
-    default: return "📍";
-  }
-};
+import { IMAGE_BASE_URL } from "../config"
+import { Search } from "lucide-react"
+import { useRealtimeRefresh } from "../contexts/RealtimeContext"
+import { useToast } from "../contexts/ToastContext"
+import {
+  PageHeader,
+  StatusPill,
+  PriorityPill,
+  Panel,
+  EmptyState,
+  SecondaryButton,
+  FilterSelect,
+  SkeletonGrid,
+} from "../components/UI/CivicUI"
+import PriorityZonesMap from "../components/UI/PriorityZonesMap"
 
 const formatDate = (dateString) => {
-  if (!dateString) return "";
+  if (!dateString) return ""
   return new Date(dateString).toLocaleDateString("en-US", {
     month: "short",
-    day: "numeric"
-  });
-};
+    day: "numeric",
+  })
+}
 
-// Filter Dropdown Component
-const FilterDropdown = ({ label, value, onChange, options }) => (
-  <div className="flex flex-col gap-1">
-    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="bg-white border border-gray-200 text-gray-700 py-2 px-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  </div>
-);
-
-// Complaint Card Component (matching ComplaintCard.jsx style)
 const ComplaintCard = ({ complaint, onUpvote, user }) => {
-  const hasVoted = user && complaint.votedBy?.includes(user.id);
+  const hasVoted = user && complaint.votedBy?.includes(user.id)
 
   return (
-    <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
-      {/* Image Preview */}
+    <div className="bg-surface rounded-xl shadow-soft hover:shadow-lift transition-all duration-300 overflow-hidden group border border-stone-dark">
       {complaint.imageUrl && (
         <div className="relative h-40 overflow-hidden">
           <img
-            src={`http://localhost:8080/${complaint.imageUrl}`}
+            src={`${IMAGE_BASE_URL}${complaint.imageUrl}`}
             alt={complaint.title || "Issue"}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-forest-deep/50 to-transparent" />
           <div className="absolute bottom-3 left-3">
-            <span className="bg-white/90 backdrop-blur text-gray-800 text-xs px-3 py-1 rounded-full font-semibold">
-              {getCategoryIcon(complaint.category)} {complaint.category}
+            <span className="bg-surface/95 text-forest text-xs px-2.5 py-1 rounded-md font-semibold">
+              {complaint.category || "General"}
             </span>
           </div>
           <div className="absolute top-3 right-3">
-            <span className={`${getPriorityBadge(complaint.priority)} px-2 py-1 rounded-full text-xs font-bold border`}>
-              {complaint.priority}
-            </span>
+            <PriorityPill priority={complaint.priority} />
           </div>
         </div>
       )}
 
-      {/* Card Body */}
       <div className="p-5">
-        {/* Header without image */}
         {!complaint.imageUrl && (
           <div className="flex justify-between items-start mb-3">
-            <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1 rounded-full font-semibold">
-              {getCategoryIcon(complaint.category)} {complaint.category}
+            <span className="bg-stone text-forest text-xs px-2.5 py-1 rounded-md font-semibold">
+              {complaint.category || "General"}
             </span>
-            <span className={`${getPriorityBadge(complaint.priority)} px-2 py-1 rounded-full text-xs font-bold border`}>
-              {complaint.priority}
-            </span>
+            <PriorityPill priority={complaint.priority} />
           </div>
         )}
 
-        <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-emerald-600 transition-colors">
+        <h3 className="font-display text-lg font-semibold text-forest mb-2 group-hover:text-moss transition-colors">
           {complaint.title || "Untitled Issue"}
         </h3>
 
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+        <p className="text-stone-muted text-sm mb-4 line-clamp-2">
           {complaint.description}
         </p>
 
-        {/* Status & Info */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${getStatusColor(complaint.status)}`}></span>
-            <span className={`${getStatusBadge(complaint.status)} px-3 py-1 rounded-full text-xs font-semibold`}>
-              {complaint.status?.replace("_", " ")}
-            </span>
-          </div>
-          <span className="text-gray-400 text-sm">{formatDate(complaint.createdAt)}</span>
+          <StatusPill status={complaint.status} />
+          <span className="text-stone-muted text-sm">{formatDate(complaint.createdAt)}</span>
         </div>
 
-        {/* Footer with upvote */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <div className="flex items-center justify-between pt-3 border-t border-stone-dark">
           <button
             onClick={() => onUpvote(complaint.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${
-              hasVoted 
-                ? "bg-emerald-100 text-emerald-700" 
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+              hasVoted
+                ? "bg-moss-pale text-moss"
+                : "bg-stone text-stone-muted hover:bg-moss-pale/60 hover:text-forest"
             }`}
           >
-            <span>👍</span>
-            <span>{complaint.upvotes || 0}</span>
+            Support · {complaint.upvotes || 0}
           </button>
           <Link
             to={`/complaint/${complaint.id}`}
-            className="text-emerald-600 hover:text-emerald-700 font-semibold text-sm flex items-center gap-1 transition-colors"
+            className="text-moss hover:text-forest font-semibold text-sm transition-colors"
           >
-            View Details →
+            View details
           </Link>
         </div>
       </div>
     </div>
-  );
-};
-
-// Loading Spinner Component
-const LoadingSpinner = () => (
-  <div className="flex items-center justify-center py-12">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-  </div>
-);
-
-// Empty State Component
-const EmptyState = () => (
-  <div className="text-center py-12">
-    <div className="text-6xl mb-4">📋</div>
-    <h3 className="text-xl font-bold text-gray-800 mb-2">No public reports found</h3>
-    <p className="text-gray-500">Try adjusting your filters.</p>
-  </div>
-);
+  )
+}
 
 function PublicReports() {
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const { user } = useContext(AuthContext)
+  const { showToast } = useToast()
 
-  // Filter states
   const [statusFilter, setStatusFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
   const [sortBy, setSortBy] = useState("newest")
 
-  const fetchComplaints = async () => {
+  const fetchComplaints = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const res = await API.get("/complaints/public")
       setComplaints(res.data)
       setError(null)
     } catch (err) {
       console.error("Failed to fetch complaints", err)
-      setError("Failed to load public reports. Please try again.")
+      if (!silent) setError("Failed to load public reports. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -196,24 +126,38 @@ function PublicReports() {
     fetchComplaints()
   }, [])
 
-  // Filter and sort complaints
+  useRealtimeRefresh(() => fetchComplaints(true), ["complaint"])
+
+  const priorityOrder = (priority) => {
+    switch (priority) {
+      case "HIGH":
+        return 3
+      case "MEDIUM":
+        return 2
+      case "LOW":
+        return 1
+      default:
+        return 0
+    }
+  }
+
   const filteredAndSortedComplaints = useMemo(() => {
     let result = [...complaints]
 
-    // Apply filters
     if (statusFilter !== "all") {
-      result = result.filter(c => c.status === statusFilter)
+      result = result.filter((c) => c.status === statusFilter)
     }
 
     if (categoryFilter !== "all") {
-      result = result.filter(c => c.category?.toLowerCase() === categoryFilter.toLowerCase())
+      result = result.filter(
+        (c) => c.category?.toLowerCase() === categoryFilter.toLowerCase()
+      )
     }
 
     if (priorityFilter !== "all") {
-      result = result.filter(c => c.priority === priorityFilter)
+      result = result.filter((c) => c.priority === priorityFilter)
     }
 
-    // Apply sorting
     result.sort((a, b) => {
       switch (sortBy) {
         case "oldest":
@@ -231,32 +175,26 @@ function PublicReports() {
     return result
   }, [complaints, statusFilter, categoryFilter, priorityFilter, sortBy])
 
-  // Priority order for sorting
-  const priorityOrder = (priority) => {
-    switch (priority) {
-      case "HIGH": return 3
-      case "MEDIUM": return 2
-      case "LOW": return 1
-      default: return 0
-    }
-  }
-
   const handleUpvote = async (id) => {
     if (!user) {
-      alert("Please login to vote")
+      showToast("Please login to vote", { type: "info" })
       return
     }
 
     try {
       await API.post(`/votes?userId=${user.id}&complaintId=${id}`)
-      fetchComplaints() // refresh votes
-    // eslint-disable-next-line no-unused-vars
+      showToast("Your support has been added.", { type: "success" })
+      fetchComplaints()
     } catch (err) {
-      // Already voted error handled by backend
+      const detail = err.response?.data?.detail
+      const msg =
+        typeof detail === "string"
+          ? detail
+          : "You have already supported this complaint."
+      showToast(msg, { type: "error" })
     }
   }
 
-  // Clear all filters
   const clearFilters = () => {
     setStatusFilter("all")
     setCategoryFilter("all")
@@ -264,133 +202,144 @@ function PublicReports() {
     setSortBy("newest")
   }
 
-  // Check if any filters are active
-  const hasActiveFilters = statusFilter !== "all" || categoryFilter !== "all" || priorityFilter !== "all" || sortBy !== "newest"
+  const hasActiveFilters =
+    statusFilter !== "all" ||
+    categoryFilter !== "all" ||
+    priorityFilter !== "all" ||
+    sortBy !== "newest"
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-100 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800">Public Reported Issues</h1>
-          <p className="text-gray-500 mt-2">Browse and upvote issues reported by your community</p>
-        </div>
+    <div className="animate-fade-up">
+      <PageHeader
+        eyebrow="Community"
+        title="Public reports"
+        description="Browse and support issues reported by your neighbors"
+      />
 
-        {/* Filters and Sort Controls */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-            
-            {/* Filter Dropdowns */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
-              <FilterDropdown
-                label="Status"
-                value={statusFilter}
-                onChange={setStatusFilter}
-                options={[
-                  { value: "all", label: "All Status" },
-                  { value: "NEW", label: "Pending" },
-                  { value: "IN_PROGRESS", label: "In Progress" },
-                  { value: "RESOLVED", label: "Resolved" }
-                ]}
-              />
-              <FilterDropdown
-                label="Category"
-                value={categoryFilter}
-                onChange={setCategoryFilter}
-                options={[
-                  { value: "all", label: "All Categories" },
-                  { value: "road", label: "🛣️ Road" },
-                  { value: "waste", label: "🗑️ Waste" },
-                  { value: "water", label: "💧 Water" },
-                  { value: "electricity", label: "⚡ Electricity" }
-                ]}
-              />
-              <FilterDropdown
-                label="Priority"
-                value={priorityFilter}
-                onChange={setPriorityFilter}
-                options={[
-                  { value: "all", label: "All Priority" },
-                  { value: "HIGH", label: "🔴 High" },
-                  { value: "MEDIUM", label: "🟠 Medium" },
-                  { value: "LOW", label: "⚪ Low" }
-                ]}
-              />
-              <FilterDropdown
-                label="Sort By"
-                value={sortBy}
-                onChange={setSortBy}
-                options={[
-                  { value: "newest", label: "📅 Newest First" },
-                  { value: "oldest", label: "📅 Oldest First" },
-                  { value: "priority-high", label: "🔼 Priority High" },
-                  { value: "priority-low", label: "🔽 Priority Low" }
-                ]}
-              />
-            </div>
-
-            {/* Clear Filters Button */}
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors"
-              >
-                Clear Filters ✕
-              </button>
-            )}
+      <Panel className="p-4 mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
+            <FilterSelect
+              label="Status"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: "all", label: "All status" },
+                { value: "NEW", label: "Pending" },
+                { value: "IN_PROGRESS", label: "In progress" },
+                { value: "RESOLVED", label: "Resolved" },
+              ]}
+            />
+            <FilterSelect
+              label="Category"
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              options={[
+                { value: "all", label: "All categories" },
+                { value: "road", label: "Road" },
+                { value: "waste", label: "Waste" },
+                { value: "water", label: "Water" },
+                { value: "electricity", label: "Electricity" },
+              ]}
+            />
+            <FilterSelect
+              label="Priority"
+              value={priorityFilter}
+              onChange={setPriorityFilter}
+              options={[
+                { value: "all", label: "All priority" },
+                { value: "HIGH", label: "High" },
+                { value: "MEDIUM", label: "Medium" },
+                { value: "LOW", label: "Low" },
+              ]}
+            />
+            <FilterSelect
+              label="Sort by"
+              value={sortBy}
+              onChange={setSortBy}
+              options={[
+                { value: "newest", label: "Newest first" },
+                { value: "oldest", label: "Oldest first" },
+                { value: "priority-high", label: "Priority high" },
+                { value: "priority-low", label: "Priority low" },
+              ]}
+            />
           </div>
 
-          {/* Results Count */}
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <p className="text-sm text-gray-500">
-              Showing <span className="font-semibold text-gray-700">{filteredAndSortedComplaints.length}</span> of <span className="font-semibold text-gray-700">{complaints.length}</span> reports
+          {hasActiveFilters && (
+            <SecondaryButton onClick={clearFilters}>Clear filters</SecondaryButton>
+          )}
+        </div>
+
+        <div className="mt-3 pt-3 border-t border-stone-dark">
+          <p className="text-sm text-stone-muted">
+            Showing{" "}
+            <span className="font-semibold text-forest">
+              {filteredAndSortedComplaints.length}
+            </span>{" "}
+            of{" "}
+            <span className="font-semibold text-forest">{complaints.length}</span>{" "}
+            reports
+          </p>
+        </div>
+      </Panel>
+
+      {loading && <SkeletonGrid count={6} />}
+
+      {!loading && error && (
+        <Panel className="p-6 text-center border-rose-200 bg-rose-50">
+          <p className="text-rose-700">{error}</p>
+        </Panel>
+      )}
+
+      {!loading && !error && filteredAndSortedComplaints.length === 0 && (
+        <EmptyState
+          icon={Search}
+          title="No public reports found"
+          description="Try adjusting your filters to see more results."
+          action={
+            hasActiveFilters ? (
+              <SecondaryButton onClick={clearFilters}>Clear filters</SecondaryButton>
+            ) : null
+          }
+        />
+      )}
+
+      {!loading && !error && filteredAndSortedComplaints.length > 0 && (
+        <>
+          <Panel className="p-6 mb-8">
+            <h2 className="font-display text-xl font-semibold text-forest mb-1">Priority zones</h2>
+            <p className="text-sm text-stone-muted mb-4">
+              See High, Medium, and Low priority areas across public reports
             </p>
-          </div>
-        </div>
+            <PriorityZonesMap complaints={filteredAndSortedComplaints} height="24rem" />
+          </Panel>
 
-        {/* Loading State */}
-        {loading && <LoadingSpinner />}
-
-        {/* Error State */}
-        {!loading && error && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
-            <p className="text-red-600">{error}</p>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && filteredAndSortedComplaints.length === 0 && (
-          <EmptyState />
-        )}
-
-        {/* Complaints Grid */}
-        {!loading && !error && filteredAndSortedComplaints.length > 0 && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredAndSortedComplaints.map((complaint) => (
-              <ComplaintCard 
-                key={complaint.id} 
+              <ComplaintCard
+                key={complaint.id}
                 complaint={complaint}
                 onUpvote={handleUpvote}
                 user={user}
               />
             ))}
           </div>
-        )}
+        </>
+      )}
 
-        {/* View All Link */}
-        {!loading && !error && complaints.length > 0 && (
-          <div className="text-center mt-8">
-            <Link to="/analytics" className="text-emerald-600 font-semibold hover:text-emerald-700 transition-colors">
-              View Analytics →
-            </Link>
-          </div>
-        )}
-
-      </div>
+      {!loading && !error && complaints.length > 0 && (
+        <div className="text-center mt-8">
+          <Link
+            to="/analytics"
+            className="text-moss font-semibold hover:text-forest transition-colors"
+          >
+            View analytics
+          </Link>
+        </div>
+      )}
     </div>
   )
 }
 
 export default PublicReports
-

@@ -1,224 +1,249 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import API from "../services/api"
-
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet"
-import "leaflet/dist/leaflet.css"
-import L from "leaflet"
-
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-})
-// Format date
+import { IMAGE_BASE_URL } from "../config"
+import { useRealtimeRefresh } from "../contexts/RealtimeContext"
+import { useToast } from "../contexts/ToastContext"
+import {
+  PageHeader,
+  StatusPill,
+  PriorityPill,
+  Panel,
+  EmptyState,
+  LoadingBlock,
+  PrimaryButton,
+  SecondaryButton,
+  FilterSelect,
+  inputClass,
+} from "../components/UI/CivicUI"
+import PriorityZonesMap, { SinglePriorityMap } from "../components/UI/PriorityZonesMap"
 
 const formatDate = (dateString) => {
   if (!dateString) return ""
   return new Date(dateString).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
-    day: "numeric"
+    day: "numeric",
   })
 }
 
-// Get priority badge color
-const getPriorityColor = (priority) => {
-  switch (priority) {
-    case "HIGH":
-      return "bg-red-100 text-red-700 border-red-200"
-    case "MEDIUM":
-      return "bg-yellow-100 text-yellow-700 border-yellow-200"
-    case "LOW":
-      return "bg-green-100 text-green-700 border-green-200"
-    default:
-      return "bg-gray-100 text-gray-700 border-gray-200"
-  }
+const priorityRank = (p) => {
+  const key = (p || "MEDIUM").toUpperCase()
+  if (key === "HIGH") return 0
+  if (key === "LOW") return 2
+  return 1
 }
 
-// Get status badge color
-const getStatusColor = (status) => {
-  switch (status) {
-    case "NEW":
-      return "bg-blue-100 text-blue-700 border-blue-200"
-    case "IN_PROGRESS":
-      return "bg-yellow-100 text-yellow-700 border-yellow-200"
-    case "RESOLVED":
-      return "bg-green-100 text-green-700 border-green-200"
-    default:
-      return "bg-gray-100 text-gray-700 border-gray-200"
-  }
+function useModalLock(isOpen) {
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [isOpen])
 }
 
-// Remarks Modal Component
+function ModalShell({ isOpen, onClose, children, wide = false }) {
+  useModalLock(isOpen)
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [isOpen, onClose])
+
+  if (!isOpen) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[2000] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 bg-forest-deep/50 backdrop-blur-sm"
+        aria-label="Close dialog"
+        onClick={onClose}
+      />
+      <div
+        className={`relative bg-surface rounded-xl shadow-lift border border-stone-dark w-full overflow-hidden max-h-[90vh] flex flex-col ${
+          wide ? "max-w-2xl" : "max-w-lg"
+        }`}
+      >
+        {children}
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 const RemarksModal = ({ isOpen, onClose, complaint, onSubmit }) => {
   const [remarks, setRemarks] = useState("")
   const [loading, setLoading] = useState(false)
+  const textareaRef = useRef(null)
 
- 
   useEffect(() => {
-    if (complaint?.remarks) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setRemarks(complaint.remarks)
-    }
-  }, [complaint])
+    if (!isOpen || !complaint) return
+    setRemarks(complaint.remarks || "")
+    const t = window.setTimeout(() => textareaRef.current?.focus(), 50)
+    return () => window.clearTimeout(t)
+  }, [isOpen, complaint])
 
-  if (!isOpen || !complaint) return null
+  if (!complaint) return null
 
   const handleSubmit = async () => {
     if (!remarks.trim()) return
     setLoading(true)
-    await onSubmit(complaint.id, remarks)
-    setLoading(false)
-    setRemarks("")
-    onClose()
+    try {
+      await onSubmit(complaint.id, remarks.trim())
+      onClose()
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-800">Add Remarks</h3>
-          <p className="text-sm text-gray-500 mt-1">{complaint.title}</p>
-        </div>
-
-        {/* Content */}
-        <div className="p-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Remarks for Citizen
-          </label>
-          <textarea
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
-            placeholder="Enter your remarks about this complaint..."
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            rows={4}
-          />
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading || !remarks.trim()}
-            className="px-6 py-2 bg-blue-500 text-white font-medium rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "Saving..." : "Save Remarks"}
-          </button>
-        </div>
+    <ModalShell isOpen={isOpen} onClose={onClose}>
+      <div className="px-6 py-4 border-b border-stone-dark shrink-0">
+        <h3 className="font-display text-lg font-semibold text-forest">Add remarks</h3>
+        <p className="text-sm text-stone-muted mt-1 line-clamp-2">{complaint.title}</p>
       </div>
-    </div>
+
+      <div className="p-6 overflow-y-auto flex-1">
+        <label
+          htmlFor="dept-remarks"
+          className="block text-xs font-semibold tracking-wide uppercase text-stone-muted mb-2"
+        >
+          Remarks for citizen
+        </label>
+        <textarea
+          id="dept-remarks"
+          ref={textareaRef}
+          value={remarks}
+          onChange={(e) => setRemarks(e.target.value)}
+          placeholder="Share progress, next steps, or a resolution note for the citizen…"
+          className={`${inputClass} resize-y min-h-[9rem]`}
+          rows={6}
+        />
+        <p className="text-xs text-stone-muted mt-2">
+          Citizens see this on their complaint details and get a notification.
+        </p>
+      </div>
+
+      <div className="px-6 py-4 bg-stone/40 border-t border-stone-dark flex justify-end gap-3 shrink-0">
+        <SecondaryButton type="button" onClick={onClose} disabled={loading}>
+          Cancel
+        </SecondaryButton>
+        <PrimaryButton
+          type="button"
+          onClick={handleSubmit}
+          disabled={loading || !remarks.trim()}
+        >
+          {loading ? "Saving…" : "Save remarks"}
+        </PrimaryButton>
+      </div>
+    </ModalShell>
   )
 }
 
-// View Complaint Modal
 const ViewComplaintModal = ({ isOpen, onClose, complaint }) => {
-  if (!isOpen || !complaint) return null
+  if (!complaint) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-800">Complaint Details</h3>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
-          {/* Image */}
-          {complaint.imageUrl && (
-            <img
-              src={`http://localhost:8080/${complaint.imageUrl}`}
-              alt={complaint.title}
-              className="w-full h-48 object-cover rounded-xl mb-4"
-            />
-          )}
-          {/* 📍 Location Map */}
-{complaint.latitude && complaint.longitude && (
-  <div className="mb-4">
-    <span className="text-xs text-gray-500 uppercase tracking-wide">Location</span>
-
-    <div className="h-64 mt-2 rounded-xl overflow-hidden border">
-      <MapContainer
-        center={[complaint.latitude, complaint.longitude]}
-        zoom={15}
-        style={{ height: "100%", width: "100%" }}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-        <Marker position={[complaint.latitude, complaint.longitude]}>
-          <Popup>📍 Complaint Location</Popup>
-        </Marker>
-      </MapContainer>
-    </div>
-
-    {/* Optional coordinates */}
-    <p className="text-xs text-gray-400 mt-1">
-      Lat: {complaint.latitude}, Lng: {complaint.longitude}
-    </p>
-  </div>
-)}
-
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Category</span>
-              <p className="font-medium text-gray-800">{complaint.category}</p>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Priority</span>
-              <span className={`inline-block px-2 py-1 rounded-lg text-xs font-medium border ${getPriorityColor(complaint.priority)}`}>
-                {complaint.priority}
-              </span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Status</span>
-              <span className={`inline-block px-2 py-1 rounded-lg text-xs font-medium border ${getStatusColor(complaint.status)}`}>
-                {complaint.status.replace("_", " ")}
-              </span>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Created</span>
-              <p className="font-medium text-gray-800">{formatDate(complaint.createdAt)}</p>
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <span className="text-xs text-gray-500 uppercase tracking-wide">Description</span>
-            <p className="text-gray-700 mt-1">{complaint.description}</p>
-          </div>
-
-          {complaint.remarks && (
-            <div className="bg-blue-50 rounded-xl p-4">
-              <span className="text-xs text-blue-600 uppercase tracking-wide font-medium">Department Remarks</span>
-              <p className="text-gray-700 mt-1">{complaint.remarks}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-          <button
-            onClick={onClose}
-            className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
-          >
-            Close
-          </button>
-        </div>
+    <ModalShell isOpen={isOpen} onClose={onClose} wide>
+      <div className="px-6 py-4 border-b border-stone-dark flex items-center justify-between shrink-0">
+        <h3 className="font-display text-lg font-semibold text-forest">Complaint details</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-stone-muted hover:bg-stone hover:text-forest transition-colors"
+          aria-label="Close"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
-    </div>
+
+      <div className="p-6 overflow-y-auto flex-1 space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill status={complaint.status} />
+          <PriorityPill priority={complaint.priority} />
+          <span className="text-xs text-stone-muted">{complaint.category}</span>
+        </div>
+
+        <h4 className="font-display text-xl font-semibold text-forest leading-snug">
+          {complaint.title}
+        </h4>
+
+        {complaint.imageUrl && (
+          <img
+            src={`${IMAGE_BASE_URL}${complaint.imageUrl}`}
+            alt={complaint.title}
+            className="w-full h-48 object-cover rounded-xl border border-stone-dark"
+          />
+        )}
+
+        {complaint.latitude != null && complaint.longitude != null && (
+          <div>
+            <span className="text-xs font-semibold tracking-wide uppercase text-stone-muted">
+              Location & priority zone
+            </span>
+            <div className="mt-2">
+              <SinglePriorityMap complaint={complaint} height="14rem" />
+            </div>
+            <p className="text-xs text-stone-muted mt-1 tabular-nums">
+              {Number(complaint.latitude).toFixed(5)}, {Number(complaint.longitude).toFixed(5)}
+            </p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <span className="text-xs font-semibold tracking-wide uppercase text-stone-muted">
+              Community votes
+            </span>
+            <p className="font-medium text-forest mt-1 tabular-nums">{complaint.upvotes || 0}</p>
+          </div>
+          <div>
+            <span className="text-xs font-semibold tracking-wide uppercase text-stone-muted">
+              Created
+            </span>
+            <p className="font-medium text-forest mt-1">{formatDate(complaint.createdAt)}</p>
+          </div>
+        </div>
+
+        <div>
+          <span className="text-xs font-semibold tracking-wide uppercase text-stone-muted">
+            Description
+          </span>
+          <p className="text-stone-muted mt-1 leading-relaxed whitespace-pre-wrap">
+            {complaint.description}
+          </p>
+        </div>
+
+        {complaint.remarks && (
+          <div className="bg-moss-pale/50 rounded-xl p-4 border border-stone-dark">
+            <span className="text-xs font-semibold tracking-wide uppercase text-moss">
+              Department remarks
+            </span>
+            <p className="text-forest mt-1 leading-relaxed whitespace-pre-wrap">{complaint.remarks}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="px-6 py-4 bg-stone/40 border-t border-stone-dark shrink-0">
+        <SecondaryButton type="button" onClick={onClose} className="w-full">
+          Close
+        </SecondaryButton>
+      </div>
+    </ModalShell>
   )
 }
 
@@ -230,23 +255,28 @@ function DepartmentReview() {
   const [viewComplaint, setViewComplaint] = useState(null)
   const [remarksModal, setRemarksModal] = useState({ open: false, complaint: null })
   const [updatingStatus, setUpdatingStatus] = useState({})
+  const { showToast } = useToast()
 
   useEffect(() => {
     fetchComplaints()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter])
 
-  const fetchComplaints = async () => {
+  useRealtimeRefresh(() => fetchComplaints(true), ["complaint", "notification"])
+
+  const fetchComplaints = async (silent = false) => {
     try {
-      setLoading(true)
-      const endpoint = filter === "ALL" 
-        ? "/department/complaints" 
-        : `/department/complaints/filter?status=${filter}`
+      if (!silent) setLoading(true)
+      const endpoint =
+        filter === "ALL"
+          ? "/department/complaints"
+          : `/department/complaints/filter?status=${filter}`
       const res = await API.get(endpoint)
       setComplaints(res.data)
+      setError("")
     } catch (err) {
       console.error("Failed to fetch complaints:", err)
-      setError("Failed to load complaints")
+      if (!silent) setError("Failed to load complaints")
     } finally {
       setLoading(false)
     }
@@ -254,171 +284,181 @@ function DepartmentReview() {
 
   const updateStatus = async (complaintId, newStatus) => {
     try {
-      setUpdatingStatus(prev => ({ ...prev, [complaintId]: true }))
+      setUpdatingStatus((prev) => ({ ...prev, [complaintId]: true }))
       await API.put(`/department/complaints/${complaintId}/status?status=${newStatus}`)
-      setComplaints(complaints.map(c => 
-        c.id === complaintId ? { ...c, status: newStatus } : c
-      ))
+      setComplaints((prev) =>
+        prev.map((c) => (c.id === complaintId ? { ...c, status: newStatus } : c))
+      )
+      if (viewComplaint?.id === complaintId) {
+        setViewComplaint((c) => (c ? { ...c, status: newStatus } : c))
+      }
+      showToast("Status updated.", { type: "success" })
     } catch (err) {
       console.error("Failed to update status:", err)
-      alert("Failed to update status")
+      showToast("Failed to update status", { type: "error" })
     } finally {
-      setUpdatingStatus(prev => ({ ...prev, [complaintId]: false }))
+      setUpdatingStatus((prev) => ({ ...prev, [complaintId]: false }))
     }
   }
 
   const submitRemarks = async (complaintId, remarks) => {
     try {
-      await API.put(`/department/complaints/${complaintId}/remarks?remarks=${encodeURIComponent(remarks)}`)
-      setComplaints(complaints.map(c => 
-        c.id === complaintId ? { ...c, remarks } : c
-      ))
+      await API.put(
+        `/department/complaints/${complaintId}/remarks?remarks=${encodeURIComponent(remarks)}`
+      )
+      setComplaints((prev) =>
+        prev.map((c) => (c.id === complaintId ? { ...c, remarks } : c))
+      )
+      if (viewComplaint?.id === complaintId) {
+        setViewComplaint((c) => (c ? { ...c, remarks } : c))
+      }
+      showToast("Remarks saved.", { type: "success" })
     } catch (err) {
       console.error("Failed to add remarks:", err)
-      alert("Failed to add remarks")
+      showToast("Failed to add remarks", { type: "error" })
+      throw err
     }
   }
 
-  const complaintCounts = {
-    ALL: complaints.length,
-    NEW: complaints.filter(c => c.status === "NEW").length,
-    IN_PROGRESS: complaints.filter(c => c.status === "IN_PROGRESS").length,
-    RESOLVED: complaints.filter(c => c.status === "RESOLVED").length
+  if (loading) {
+    return <LoadingBlock label="Loading complaints…" />
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="text-gray-500 mt-4">Loading complaints...</p>
-        </div>
-      </div>
-    )
-  }
+  const sorted = [...complaints].sort((a, b) => {
+    const pr = priorityRank(a.priority) - priorityRank(b.priority)
+    if (pr !== 0) return pr
+    return (b.upvotes || 0) - (a.upvotes || 0)
+  })
 
   return (
-    <div className="min-h-screen bg-blue-50 py-8">
-      <div className="max-w-7xl mx-auto px-6">
-        
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Review Complaints</h1>
-          <p className="text-gray-500 mt-1">Manage and respond to citizen complaints</p>
+    <div className="max-w-7xl mx-auto animate-fade-up">
+      <PageHeader
+        eyebrow="Review queue"
+        title="Review complaints"
+        description="Manage status, priority, and remarks for assigned citizen complaints."
+        action={
+          <FilterSelect
+            label="Status"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "ALL", label: "All" },
+              { value: "NEW", label: "New" },
+              { value: "IN_PROGRESS", label: "In progress" },
+              { value: "RESOLVED", label: "Resolved" },
+            ]}
+          />
+        }
+      />
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl mb-6 text-sm">
+          {error}
         </div>
+      )}
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6">
-            {error}
-          </div>
-        )}
-
-        {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {["ALL", "NEW", "IN_PROGRESS", "RESOLVED"].map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`px-5 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                filter === status
-                  ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
-                  : "bg-white text-gray-600 hover:bg-gray-50 shadow-sm"
-              }`}
-            >
-              {status.replace("_", " ")} ({complaintCounts[status]})
-            </button>
-          ))}
-        </div>
-
-        {/* Complaints Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {complaints.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="text-6xl mb-4">📋</div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">No complaints found</h3>
-              <p className="text-gray-500">
-                {filter === "ALL" 
-                  ? "No complaints have been assigned to your department yet." 
-                  : `No ${filter.toLowerCase().replace("_", " ")} complaints.`}
+      {complaints.length > 0 && (
+        <Panel className="p-5 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-4">
+            <div>
+              <h2 className="font-display text-xl font-semibold text-forest">Priority areas</h2>
+              <p className="text-sm text-stone-muted mt-0.5">
+                Circle zones for your department queue — high urgency first in the list below
               </p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-100">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Title</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Priority</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {complaints.map((complaint) => (
-                    <tr key={complaint.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <p className="font-medium text-gray-800 truncate max-w-xs">{complaint.title}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-600">{complaint.category}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium border ${getPriorityColor(complaint.priority)}`}>
-                          {complaint.priority}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <select
-                          value={complaint.status}
-                          onChange={(e) => updateStatus(complaint.id, e.target.value)}
-                          disabled={updatingStatus[complaint.id]}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border bg-white cursor-pointer ${getStatusColor(complaint.status)}`}
-                        >
-                          <option value="NEW">NEW</option>
-                          <option value="IN_PROGRESS">IN PROGRESS</option>
-                          <option value="RESOLVED">RESOLVED</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-500">{formatDate(complaint.createdAt)}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setViewComplaint(complaint)}
-                            className="px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            View
-                          </button>
-                          <button
-                            onClick={() => setRemarksModal({ open: true, complaint })}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                          >
-                            Remarks
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+            <p className="text-xs font-semibold text-stone-muted tabular-nums">
+              {complaints.length} complaint{complaints.length === 1 ? "" : "s"}
+            </p>
+          </div>
+          <PriorityZonesMap complaints={complaints} height="20rem" />
+        </Panel>
+      )}
+
+      {complaints.length === 0 ? (
+        <EmptyState
+          title="No complaints found"
+          description={
+            filter === "ALL"
+              ? "No complaints have been assigned to your department yet."
+              : `No ${filter.toLowerCase().replace("_", " ")} complaints.`
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {sorted.map((complaint) => (
+            <Panel key={complaint.id} className="p-5">
+              <div className="flex flex-col lg:flex-row lg:items-start gap-5">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <StatusPill status={complaint.status} />
+                    <PriorityPill priority={complaint.priority} />
+                    <span className="text-xs font-medium text-stone-muted tracking-wide uppercase">
+                      {complaint.category}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-lg font-semibold text-forest leading-snug">
+                    {complaint.title}
+                  </h3>
+                  {complaint.description && (
+                    <p className="text-sm text-stone-muted mt-1.5 line-clamp-2 leading-relaxed">
+                      {complaint.description}
+                    </p>
+                  )}
+                  <p className="text-sm text-stone-muted mt-2">
+                    {formatDate(complaint.createdAt)}
+                    <span className="mx-2 opacity-40">·</span>
+                    <span className="tabular-nums font-medium text-moss">
+                      {complaint.upvotes || 0} votes
+                    </span>
+                    {complaint.remarks ? (
+                      <>
+                        <span className="mx-2 opacity-40">·</span>
+                        <span className="text-moss font-medium">Has remarks</span>
+                      </>
+                    ) : null}
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row sm:items-end gap-3 shrink-0 lg:min-w-[14rem]">
+                  <div className="flex flex-col gap-1 flex-1 sm:min-w-[10rem]">
+                    <label className="text-xs font-semibold text-stone-muted uppercase tracking-wide">
+                      Update status
+                    </label>
+                    <select
+                      value={complaint.status}
+                      onChange={(e) => updateStatus(complaint.id, e.target.value)}
+                      disabled={updatingStatus[complaint.id]}
+                      className="bg-surface border border-stone-dark text-ink py-2.5 px-3 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-moss/40 disabled:opacity-60"
+                    >
+                      <option value="NEW">NEW</option>
+                      <option value="IN_PROGRESS">IN PROGRESS</option>
+                      <option value="RESOLVED">RESOLVED</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <SecondaryButton type="button" onClick={() => setViewComplaint(complaint)}>
+                      View
+                    </SecondaryButton>
+                    <PrimaryButton
+                      type="button"
+                      onClick={() => setRemarksModal({ open: true, complaint })}
+                    >
+                      Remarks
+                    </PrimaryButton>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+          ))}
         </div>
+      )}
 
-      </div>
-
-      {/* View Complaint Modal */}
       <ViewComplaintModal
         isOpen={!!viewComplaint}
         onClose={() => setViewComplaint(null)}
         complaint={viewComplaint}
       />
 
-      {/* Remarks Modal */}
       <RemarksModal
         isOpen={remarksModal.open}
         onClose={() => setRemarksModal({ open: false, complaint: null })}
@@ -430,4 +470,3 @@ function DepartmentReview() {
 }
 
 export default DepartmentReview
-

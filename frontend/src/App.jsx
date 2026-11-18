@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom"
 import { useContext } from "react"
 import PublicLayout from "./components/Layout/PublicLayout"
+import UserLayout from "./components/Layout/UserLayout"
 import DepartmentLayout from "./components/Layout/DepartmentLayout"
 import { AuthContext, isDepartmentAdmin } from "./contexts/AuthContext"
 import "./App.css"
@@ -74,7 +75,7 @@ function App() {
           path="/dashboard" 
           element={
             <ProtectedRoute allowedRoles={["USER"]}>
-              <PublicLayout><UserDashboard /></PublicLayout>
+              <UserLayout><UserDashboard /></UserLayout>
             </ProtectedRoute>
           } 
         />
@@ -82,7 +83,7 @@ function App() {
           path="/my-complaints" 
           element={
             <ProtectedRoute allowedRoles={["USER"]}>
-              <PublicLayout><MyComplaints /></PublicLayout>
+              <UserLayout><MyComplaints /></UserLayout>
             </ProtectedRoute>
           } 
         />
@@ -90,7 +91,7 @@ function App() {
           path="/public-reports" 
           element={
             <ProtectedRoute allowedRoles={["USER"]}>
-              <PublicLayout><PublicReports /></PublicLayout>
+              <UserLayout><PublicReports /></UserLayout>
             </ProtectedRoute>
           } 
         />
@@ -98,7 +99,7 @@ function App() {
           path="/report" 
           element={
             <ProtectedRoute allowedRoles={["USER"]}>
-              <PublicLayout><ReportIssue /></PublicLayout>
+              <UserLayout><ReportIssue /></UserLayout>
             </ProtectedRoute>
           } 
         />
@@ -106,7 +107,7 @@ function App() {
           path="/complaint/:id" 
           element={
             <ProtectedRoute allowedRoles={["USER"]}>
-              <PublicLayout><ComplaintDetails /></PublicLayout>
+              <UserLayout><ComplaintDetails /></UserLayout>
             </ProtectedRoute>
           } 
         />
@@ -114,7 +115,7 @@ function App() {
           path="/notifications" 
           element={
             <ProtectedRoute allowedRoles={["USER"]}>
-              <PublicLayout><Notifications /></PublicLayout>
+              <UserLayout><Notifications /></UserLayout>
             </ProtectedRoute>
           } 
         />
@@ -122,7 +123,7 @@ function App() {
           path="/analytics" 
           element={
             <ProtectedRoute allowedRoles={["USER"]}>
-              <PublicLayout><Analytics /></PublicLayout>
+              <UserLayout><Analytics /></UserLayout>
             </ProtectedRoute>
           } 
         />
@@ -130,7 +131,7 @@ function App() {
           path="/profile" 
           element={
             <ProtectedRoute allowedRoles={["USER"]}>
-              <PublicLayout><Profile /></PublicLayout>
+              <UserLayout><Profile /></UserLayout>
             </ProtectedRoute>
           } 
         />
@@ -138,7 +139,7 @@ function App() {
           path="/issue/:id" 
           element={
             <ProtectedRoute allowedRoles={["USER"]}>
-              <PublicLayout><IssueDetail /></PublicLayout>
+              <UserLayout><IssueDetail /></UserLayout>
             </ProtectedRoute>
           } 
         />

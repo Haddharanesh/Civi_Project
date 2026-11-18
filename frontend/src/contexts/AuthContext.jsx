@@ -1,17 +1,15 @@
-import { createContext, useState } from "react"
+import { createContext, useEffect, useState } from "react"
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext()
 
-// Role constants
 // eslint-disable-next-line react-refresh/only-export-components
 export const ROLES = {
   USER: "USER",
   DEPARTMENT_ADMIN: "DEPARTMENT_ADMIN",
-  ADMIN: "SUPER_ADMIN"
+  ADMIN: "SUPER_ADMIN",
 }
 
-// Role check helpers
 // eslint-disable-next-line react-refresh/only-export-components
 export const isUser = (user) => user?.role === ROLES.USER
 // eslint-disable-next-line react-refresh/only-export-components
@@ -31,7 +29,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const [user, setUser] = useState(getStoredUser())
+  const [user, setUser] = useState(getStoredUser)
 
   const login = (userData, token) => {
     localStorage.setItem("token", token)
@@ -45,8 +43,16 @@ export const AuthProvider = ({ children }) => {
     setUser(null)
   }
 
+  useEffect(() => {
+    const onUnauthorized = () => setUser(null)
+    window.addEventListener("civic:unauthorized", onUnauthorized)
+    return () => window.removeEventListener("civic:unauthorized", onUnauthorized)
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isUser, isDepartmentAdmin, isAdmin, isCitizen, ROLES }}>
+    <AuthContext.Provider
+      value={{ user, login, logout, isUser, isDepartmentAdmin, isAdmin, isCitizen, ROLES }}
+    >
       {children}
     </AuthContext.Provider>
   )

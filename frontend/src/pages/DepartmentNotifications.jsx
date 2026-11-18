@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import API from "../services/api"
+import { useRealtimeRefresh } from "../contexts/RealtimeContext"
+import {
+  PageHeader,
+  Panel,
+  EmptyState,
+  LoadingBlock,
+} from "../components/UI/CivicUI"
 
-// Format relative time
 const formatTime = (dateString) => {
   if (!dateString) return ""
   const date = new Date(dateString)
@@ -19,19 +25,27 @@ const formatTime = (dateString) => {
   return date.toLocaleDateString()
 }
 
-// Get icon based on notification type
-const getTypeIcon = (type) => {
+const getTypeLabel = (type) => {
   switch (type) {
     case "STATUS_UPDATE":
-      return "📋"
+      return "Status"
     case "REMARK":
-      return "💬"
+      return "Remark"
     case "NEW_COMPLAINT":
-      return "📢"
+      return "New"
+    case "SUBMITTED":
+      return "Submitted"
+    case "SUPPORT":
+      return "Support"
     default:
-      return "🔔"
+      return "Alert"
   }
 }
+
+const normalizeNotification = (n) => ({
+  ...n,
+  read: n.read ?? n.is_read ?? false,
+})
 
 function DepartmentNotifications() {
   const [notifications, setNotifications] = useState([])
@@ -43,14 +57,16 @@ function DepartmentNotifications() {
     fetchNotifications()
   }, [])
 
-  const fetchNotifications = async () => {
+  useRealtimeRefresh(() => fetchNotifications(true), ["notification", "complaint"])
+
+  const fetchNotifications = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const res = await API.get("/notifications/department")
-      setNotifications(res.data)
+      setNotifications((res.data || []).map(normalizeNotification))
     } catch (err) {
       console.error("Failed to fetch notifications:", err)
-      setError("Failed to load notifications")
+      if (!silent) setError("Failed to load notifications")
     } finally {
       setLoading(false)
     }
@@ -84,167 +100,137 @@ function DepartmentNotifications() {
   const unreadCount = notifications.filter(n => !n.read).length
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="text-gray-500 mt-4">Loading notifications...</p>
-        </div>
-      </div>
-    )
+    return <LoadingBlock label="Loading notifications…" />
   }
 
   return (
-    <div className="min-h-screen bg-blue-50 py-8">
-      <div className="max-w-3xl mx-auto px-6">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Notifications</h1>
-            <p className="text-gray-500 mt-1">Stay updated on complaint activities</p>
-          </div>
-          {unreadCount > 0 && (
+    <div className="animate-fade-up max-w-3xl">
+      <PageHeader
+        eyebrow="Inbox"
+        title="Notifications"
+        description="Stay updated on complaint activity in your department."
+        action={
+          unreadCount > 0 ? (
             <button
               onClick={markAllAsRead}
-              className="px-4 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+              className="px-4 py-2 text-sm text-moss hover:text-forest font-semibold transition-colors"
             >
               Mark all as read
             </button>
-          )}
+          ) : null
+        }
+      />
+
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setFilter("all")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            filter === "all"
+              ? "bg-forest text-white"
+              : "bg-surface text-stone-muted hover:bg-stone border border-stone-dark"
+          }`}
+        >
+          All ({notifications.length})
+        </button>
+        <button
+          onClick={() => setFilter("unread")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            filter === "unread"
+              ? "bg-forest text-white"
+              : "bg-surface text-stone-muted hover:bg-stone border border-stone-dark"
+          }`}
+        >
+          Unread ({unreadCount})
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl mb-4 text-sm">
+          {error}
         </div>
+      )}
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === "all" 
-                ? "bg-blue-500 text-white" 
-                : "bg-white text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            All ({notifications.length})
-          </button>
-          <button
-            onClick={() => setFilter("unread")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === "unread" 
-                ? "bg-blue-500 text-white" 
-                : "bg-white text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            Unread ({unreadCount})
-          </button>
-        </div>
+      {filteredNotifications.length === 0 ? (
+        <EmptyState
+          title={filter === "unread" ? "No unread notifications" : "No notifications yet"}
+          description={
+            filter === "unread"
+              ? "You're all caught up."
+              : "You'll receive notifications about new complaints here."
+          }
+        />
+      ) : (
+        <Panel className="overflow-hidden">
+          <div className="divide-y divide-stone-dark">
+            {filteredNotifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`p-4 hover:bg-stone/40 transition-colors cursor-pointer ${
+                  !notification.read ? "bg-moss-pale/30" : ""
+                }`}
+                onClick={() => !notification.read && markAsRead(notification.id)}
+              >
+                <div className="flex items-start gap-4">
+                  <span
+                    className={`shrink-0 inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold tracking-wide uppercase ${
+                      notification.read
+                        ? "bg-stone text-stone-muted"
+                        : "bg-moss-pale text-moss"
+                    }`}
+                  >
+                    {getTypeLabel(notification.type)}
+                  </span>
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-4">
-            {error}
-          </div>
-        )}
-
-        {/* Notifications List */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {filteredNotifications.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="text-6xl mb-4">🔔</div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                {filter === "unread" ? "No unread notifications" : "No notifications yet"}
-              </h3>
-              <p className="text-gray-500">
-                {filter === "unread" 
-                  ? "You're all caught up!" 
-                  : "You'll receive notifications about new complaints here."}
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {filteredNotifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
-                    !notification.read ? "bg-blue-50/30" : ""
-                  }`}
-                  onClick={() => !notification.read && markAsRead(notification.id)}
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Icon */}
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      notification.read ? "bg-gray-100" : "bg-blue-100"
-                    }`}>
-                      <span className="text-xl">{getTypeIcon(notification.type)}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm leading-relaxed ${notification.read ? "text-stone-muted" : "text-forest font-medium"}`}>
+                      {notification.message}
+                    </p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="text-xs text-stone-muted">
+                        {formatTime(notification.createdAt)}
+                      </span>
+                      {notification.complaintId && (
+                        <Link
+                          to="/department/review"
+                          className="text-xs text-moss hover:text-forest font-semibold"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View complaint
+                        </Link>
+                      )}
                     </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${notification.read ? "text-gray-600" : "text-gray-800 font-medium"}`}>
-                        {notification.message}
-                      </p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs text-gray-400">
-                          {formatTime(notification.createdAt)}
-                        </span>
-                        {notification.complaintId && (
-                          <Link
-                            to={`/department/review`}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            View Complaint →
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Unread indicator */}
-                    {!notification.read && (
-                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
-                    )}
                   </div>
+
+                  {!notification.read && (
+                    <div className="w-2 h-2 bg-moss rounded-full shrink-0 mt-2" />
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
 
-        {/* Quick Links */}
-        <div className="mt-6 grid grid-cols-2 gap-4">
-          <Link
-            to="/department/review"
-            className="bg-white rounded-xl p-4 border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-xl">
-                📋
-              </div>
-              <div>
-                <p className="font-medium text-gray-800">Review Complaints</p>
-                <p className="text-sm text-gray-500">Manage incoming complaints</p>
-              </div>
-            </div>
-          </Link>
-          <Link
-            to="/department/reports"
-            className="bg-white rounded-xl p-4 border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-xl">
-                📊
-              </div>
-              <div>
-                <p className="font-medium text-gray-800">Department Reports</p>
-                <p className="text-sm text-gray-500">View analytics</p>
-              </div>
-            </div>
-          </Link>
-        </div>
-
+      <div className="mt-6 grid grid-cols-2 gap-4">
+        <Link
+          to="/department/review"
+          className="bg-surface rounded-xl p-4 border border-stone-dark hover:shadow-lift transition-shadow"
+        >
+          <p className="text-xs font-semibold tracking-[0.14em] uppercase text-moss mb-1">Queue</p>
+          <p className="font-display font-semibold text-forest">Review complaints</p>
+          <p className="text-sm text-stone-muted mt-0.5">Manage incoming issues</p>
+        </Link>
+        <Link
+          to="/department/reports"
+          className="bg-surface rounded-xl p-4 border border-stone-dark hover:shadow-lift transition-shadow"
+        >
+          <p className="text-xs font-semibold tracking-[0.14em] uppercase text-moss mb-1">Analytics</p>
+          <p className="font-display font-semibold text-forest">Department reports</p>
+          <p className="text-sm text-stone-muted mt-0.5">View analytics</p>
+        </Link>
       </div>
     </div>
   )
 }
 
 export default DepartmentNotifications
-
